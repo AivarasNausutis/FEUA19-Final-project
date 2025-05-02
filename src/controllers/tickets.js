@@ -10,6 +10,7 @@ const INSERT_TICKET = async (req, res) => {
       from_location: req.body.from_location,
       to_location: req.body.to_location,
       to_location_photo_url: req.body.to_location_photo_url,
+      userId: req.body.userId,
     });
 
     const response = await ticket.save();
