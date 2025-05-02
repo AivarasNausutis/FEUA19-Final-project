@@ -6,7 +6,7 @@ const userSchema = mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   bought_tickets: [{ type: mongoose.Schema.Types.ObjectId, ref: "ticket" }],
-  money_balance: { type: Number, required: false },
+  money_balance: { type: Number, required: true },
 });
 
 export default mongoose.model("user", userSchema);

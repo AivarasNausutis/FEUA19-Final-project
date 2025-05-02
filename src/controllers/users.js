@@ -2,6 +2,7 @@ import UserModel from "../models/users.js";
 import { v4 as uuidv4 } from "uuid";
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
+import users from "../models/users.js";
 
 const SIGNUP = async (req, res) => {
   const data = req.body;
@@ -116,4 +117,51 @@ const GET_NEW_JWT_TOKEN = async (req, res) => {
     });
   }
 };
-export { SIGNUP, LOGIN, GET_NEW_JWT_TOKEN };
+const GET_ALL_USERS = async (req, res) => {
+  try {
+    const response = await UserModel.find().sort("name");
+
+    return res.status(200).json({
+      users: response,
+    });
+  } catch (err) {
+    console.log("We are having some technical difficulties");
+    console.log(err);
+
+    return res.status(400).json({
+      message: "We are having some technical difficulties",
+    });
+  }
+};
+
+const GET_USERS_BY_ID = async (req, res) => {
+  try {
+    const user = await UserModel.findOne({ id: req.params.id });
+
+    if (!user) {
+      return res.status(404).json({
+        message: `user ${req.params.id} does not exist`,
+      });
+    }
+
+    const response = await UserModel.findOne({ id: req.params.id });
+
+    if (!response) {
+      return res.status(404).json({
+        message: `Data with id: ${req.params.id} not exist`,
+      });
+    }
+
+    return res.status(200).json({
+      user: response,
+    });
+  } catch (err) {
+    console.log("We are having some technical difficulties");
+    console.log(err);
+
+    return res.status(400).json({
+      message: "We are having some technical difficulties",
+    });
+  }
+};
+export { SIGNUP, LOGIN, GET_NEW_JWT_TOKEN, GET_ALL_USERS, GET_USERS_BY_ID };
