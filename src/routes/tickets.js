@@ -1,5 +1,5 @@
 import express from "express";
-import { INSERT_TICKET } from "../controllers/tickets.js";
+import { INSERT_TICKET, BUY_TICKET } from "../controllers/tickets.js";
 
 const router = express.Router();
 import validate from "../middleware/validation.js";
@@ -12,5 +12,6 @@ router.post(
   validate(createTicketSchema),
   INSERT_TICKET
 );
+router.post("/buyTicket", auth, BUY_TICKET);
 
 export default router;

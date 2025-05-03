@@ -2,7 +2,6 @@ import UserModel from "../models/users.js";
 import { v4 as uuidv4 } from "uuid";
 import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
-import users from "../models/users.js";
 
 const SIGNUP = async (req, res) => {
   const data = req.body;
@@ -164,4 +163,63 @@ const GET_USERS_BY_ID = async (req, res) => {
     });
   }
 };
-export { SIGNUP, LOGIN, GET_NEW_JWT_TOKEN, GET_ALL_USERS, GET_USERS_BY_ID };
+
+const GET_ALL_USERS_WITH_TICKETS = async (req, res) => {
+  try {
+    const usersWithTickets = await UserModel.aggregate([
+      {
+        $lookup: {
+          from: "tickets",
+          localField: "bought_tickets",
+          foreignField: "_id",
+          as: "bought_tickets_details",
+        },
+      },
+    ]);
+
+    const filteredUsers = usersWithTickets.filter(
+      (user) => user.bought_tickets.length > 0
+    );
+
+    res.status(200).json(filteredUsers);
+  } catch (error) {
+    console.error("Error fetching users with tickets:", error.message);
+    res.status(500).json({
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+const GET_USER_BY_ID_WITH_TICKETS = async (req, res) => {
+  try {
+    const user = req.params.id;
+
+    const userWithTickets = await UserModel.aggregate([
+      {
+        $match: { id: user },
+      },
+      {
+        $lookup: {
+          from: "tickets",
+          localField: "bought_tickets",
+          foreignField: "_id",
+          as: "bought_tickets_details",
+        },
+      },
+    ]);
+
+    res.status(200).json(userWithTickets[0]);
+  } catch (error) {
+    console.error("Error fetching user by ID with tickets:", error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+export {
+  SIGNUP,
+  LOGIN,
+  GET_NEW_JWT_TOKEN,
+  GET_ALL_USERS,
+  GET_USERS_BY_ID,
+  GET_ALL_USERS_WITH_TICKETS,
+  GET_USER_BY_ID_WITH_TICKETS,
+};
