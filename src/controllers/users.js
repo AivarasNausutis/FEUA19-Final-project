@@ -166,7 +166,7 @@ const GET_USERS_BY_ID = async (req, res) => {
 
 const GET_ALL_USERS_WITH_TICKETS = async (req, res) => {
   try {
-    const usersWithTickets = await UserModel.aggregate([
+    const userAggregate = await UserModel.aggregate([
       {
         $lookup: {
           from: "tickets",
@@ -177,16 +177,17 @@ const GET_ALL_USERS_WITH_TICKETS = async (req, res) => {
       },
     ]);
 
-    const filteredUsers = usersWithTickets.filter(
+    const filteredUsers = userAggregate.filter(
       (user) => user.bought_tickets.length > 0
     );
 
     res.status(200).json(filteredUsers);
   } catch (error) {
-    console.error("Error fetching users with tickets:", error.message);
-    res.status(500).json({
-      message: "Internal server error",
-      error: error.message,
+    console.log("We are having some technical difficulties");
+    console.log(err);
+
+    return res.status(400).json({
+      message: "We are having some technical difficulties",
     });
   }
 };
@@ -194,7 +195,7 @@ const GET_USER_BY_ID_WITH_TICKETS = async (req, res) => {
   try {
     const user = req.params.id;
 
-    const userWithTickets = await UserModel.aggregate([
+    const userAggregate = await UserModel.aggregate([
       {
         $match: { id: user },
       },
@@ -208,10 +209,25 @@ const GET_USER_BY_ID_WITH_TICKETS = async (req, res) => {
       },
     ]);
 
-    res.status(200).json(userWithTickets[0]);
+    if (userAggregate.length === 0) {
+      return res.status(404).json({
+        message: `User with id: ${req.params.id} does not exist`,
+      });
+    }
+    const filteredUser = userAggregate[0];
+    if (filteredUser.bought_tickets.length === 0) {
+      return res.status(404).json({
+        message: `User with id: ${req.params.id} does not have any tickets`,
+      });
+    }
+    res.status(200).json(userAggregate[0]);
   } catch (error) {
-    console.error("Error fetching user by ID with tickets:", error.message);
-    res.status(500).json({ message: "Internal server error" });
+    console.log("We are having some technical difficulties");
+    console.log(err);
+
+    return res.status(400).json({
+      message: "We are having some technical difficulties",
+    });
   }
 };
 export {
