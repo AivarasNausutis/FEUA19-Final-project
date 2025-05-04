@@ -4,98 +4,119 @@ import bcryptjs from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 const SIGNUP = async (req, res) => {
-  const data = req.body;
+  try {
+    const data = req.body;
 
-  if (!data.email.includes("@")) {
-    return res.status(400).json({ message: "Bad email format" });
-  }
+    if (!data.email.includes("@")) {
+      return res.status(400).json({ message: "Bad email format" });
+    }
 
-  if (data.name[0] === data.name[0].toLowerCase()) {
+    if (data.name === data.name.toLowerCase()) {
+      return res.status(400).json({
+        message: "Name must start with an uppercase letter.",
+      });
+    }
+    const passwordRegex = /^(?=.*[0-9]).{6,}$/;
+    if (!passwordRegex.test(data.password)) {
+      return res.status(400).json({
+        message:
+          "Password must be at least 6 characters long and contain at least one digit.",
+      });
+    }
+    const salt = bcryptjs.genSaltSync(10);
+    const passwordHash = bcryptjs.hashSync(data.password, salt);
+
+    const user = {
+      id: uuidv4(),
+      email: data.email,
+      name: data.name,
+      password: passwordHash,
+      money_balance: data.money_balance,
+    };
+
+    const respose = await new UserModel(user);
+    const createdUser = await respose.save();
+
+    const token = jwt.sign(
+      { email: user.email, userId: user.id },
+      process.env.JWT_SECRET,
+      { expiresIn: "2h" }
+    );
+    const refreshToken = jwt.sign(
+      { email: user.email, userId: user.id },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: "1d" }
+    );
+    res.status(200).json({
+      message: "Sign in successfully",
+      user: createdUser,
+      jwt_token: token,
+      jwt_refresh_token: refreshToken,
+    });
+  } catch (err) {
+    console.log("We are having some technical difficulties");
+    console.log(err);
+
     return res.status(400).json({
-      message: "Name must start with an uppercase letter.",
+      message: "We are having some technical difficulties",
     });
   }
-  const passwordRegex = /^(?=.*[0-9]).{6,}$/;
-  if (!passwordRegex.test(data.password)) {
-    return res.status(400).json({
-      message:
-        "Password must be at least 6 characters long and contain at least one digit.",
-    });
-  }
-  const salt = bcryptjs.genSaltSync(10);
-  const passwordHash = bcryptjs.hashSync(data.password, salt);
-
-  const user = {
-    id: uuidv4(),
-    email: data.email,
-    name: data.name,
-    password: passwordHash,
-  };
-
-  const respose = await new UserModel(user);
-  const createdUser = await respose.save();
-
-  const token = jwt.sign(
-    { email: user.email, userId: user.id },
-    process.env.JWT_SECRET,
-    { expiresIn: "2h" }
-  );
-  const refreshToken = jwt.sign(
-    { email: user.email, userId: user.id },
-    process.env.JWT_REFRESH_SECRET,
-    { expiresIn: "1d" }
-  );
-  res.status(200).json({
-    message: "Sign in successfully",
-    user: createdUser,
-    jwt_token: token,
-    jwt_refresh_token: refreshToken,
-  });
 };
 
 const LOGIN = async (req, res) => {
-  const data = req.body;
+  try {
+    const data = req.body;
 
-  const user = await UserModel.findOne({ email: data.email });
+    const user = await UserModel.findOne({ email: data.email });
 
-  if (!user) {
-    console.log("User not found");
-    return res.status(401).json({ message: "Bad email or password" });
+    if (!user) {
+      console.log("User not found");
+      return res.status(401).json({ message: "Bad email or password" });
+    }
+
+    const isPasswordMatch = bcryptjs.compareSync(data.password, user.password);
+
+    if (!isPasswordMatch) {
+      console.log("Password does not match");
+      return res.status(401).json({ message: "Bad email or password" });
+    }
+
+    const token = jwt.sign(
+      { email: user.email, userId: user.id },
+      process.env.JWT_SECRET,
+      { expiresIn: "2h" }
+    );
+    const refreshToken = jwt.sign(
+      { email: user.email, userId: user.id },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    res.status(200).json({
+      message: "Logged in successfully",
+      jwt_token: token,
+      jwt_refresh_token: refreshToken,
+    });
+  } catch (err) {
+    console.log("We are having some technical difficulties");
+    console.log(err);
+
+    return res.status(400).json({
+      message: "We are having some technical difficulties",
+    });
   }
-
-  const isPasswordMatch = bcryptjs.compareSync(data.password, user.password);
-
-  if (!isPasswordMatch) {
-    console.log("Password does not match");
-    return res.status(401).json({ message: "Bad email or password" });
-  }
-
-  const token = jwt.sign(
-    { email: user.email, userId: user.id },
-    process.env.JWT_SECRET,
-    { expiresIn: "2h" }
-  );
-  const refreshToken = jwt.sign(
-    { email: user.email, userId: user.id },
-    process.env.JWT_REFRESH_SECRET,
-    { expiresIn: "1d" }
-  );
-
-  res.status(200).json({
-    message: "Logged in successfully",
-    jwt_token: token,
-    jwt_refresh_token: refreshToken,
-  });
 };
 
 const GET_NEW_JWT_TOKEN = async (req, res) => {
-  const { jwt_refresh_token } = req.body;
-
-  if (!jwt_refresh_token) {
-    return res.status(400).json({ message: "Refreshed JWT token is missing" });
-  }
-
   try {
+    const jwt_refresh_token = req.body.jwt_refresh_token;
+
+    if (!jwt_refresh_token) {
+      return res
+        .status(400)
+        .json({ message: "Refreshed JWT token is missing" });
+    }
+
     const decoded = jwt.verify(
       jwt_refresh_token,
       process.env.JWT_REFRESH_SECRET
@@ -111,8 +132,11 @@ const GET_NEW_JWT_TOKEN = async (req, res) => {
       jwt_refresh_token,
     });
   } catch (err) {
-    res.status(400).json({
-      message: "You are not logged in. Try to log in again",
+    console.log("We are having some technical difficulties");
+    console.log(err);
+
+    return res.status(400).json({
+      message: "We are having some technical difficulties",
     });
   }
 };
@@ -172,7 +196,7 @@ const GET_ALL_USERS_WITH_TICKETS = async (req, res) => {
           from: "tickets",
           localField: "bought_tickets",
           foreignField: "_id",
-          as: "bought_tickets_details",
+          as: "bought_tickets",
         },
       },
     ]);
@@ -204,7 +228,7 @@ const GET_USER_BY_ID_WITH_TICKETS = async (req, res) => {
           from: "tickets",
           localField: "bought_tickets",
           foreignField: "_id",
-          as: "bought_tickets_details",
+          as: "bought_tickets",
         },
       },
     ]);
@@ -220,7 +244,7 @@ const GET_USER_BY_ID_WITH_TICKETS = async (req, res) => {
         message: `User with id: ${req.params.id} does not have any tickets`,
       });
     }
-    res.status(200).json(userAggregate[0]);
+    res.status(200).json(userAggregate);
   } catch (error) {
     console.log("We are having some technical difficulties");
     console.log(err);

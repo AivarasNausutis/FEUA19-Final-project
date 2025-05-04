@@ -30,13 +30,13 @@ const INSERT_TICKET = async (req, res) => {
 };
 
 const BUY_TICKET = async (req, res) => {
-  const { user_id, ticket_id } = req.body;
-
-  if (!user_id || !ticket_id) {
-    return res.status(400).json({ message: "Missing user_id or ticket_id" });
-  }
-
   try {
+    const { user_id, ticket_id } = req.body;
+
+    if (!user_id || !ticket_id) {
+      return res.status(400).json({ message: "Missing user_id or ticket_id" });
+    }
+
     const user = await UserModel.findById(user_id);
     const ticket = await ticketModel.findById(ticket_id);
 
@@ -63,11 +63,13 @@ const BUY_TICKET = async (req, res) => {
         bought_tickets: user.bought_tickets,
       },
     });
-  } catch (error) {
-    console.error("Error in /buyTicket:", error.message);
-    res
-      .status(500)
-      .json({ message: "Internal server error", error: error.message });
+  } catch (err) {
+    console.log("We are having some technical difficulties");
+    console.log(err);
+
+    return res.status(400).json({
+      message: "We are having some technical difficulties",
+    });
   }
 };
 
